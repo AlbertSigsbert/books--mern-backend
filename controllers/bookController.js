@@ -4,17 +4,43 @@ const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 
 //Get all books(with pagination)
-const pageLimit = 10;
+// const pageLimit = 10;
+// const getBooks = asyncHandler(async (req, res) => {
+//   const books = await Book.find().sort({ createdAt: -1 }).lean();
+//   if (!books?.length) {
+//     return res.status(400).json({ message: "No books found" });
+//   }
+//   res.status(200).json({
+//     "books":books.slice(-pageLimit),
+//     "page": 1,
+//     "pageCount": Math.ceil (books.length / 10)
+//   });
+// });
+
 const getBooks = asyncHandler(async (req, res) => {
-  const books = await Book.find().sort({ createdAt: -1 }).lean();
-  if (!books?.length) {
-    return res.status(400).json({ message: "No books found" });
+  // Get page and limit parameters from query string
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  // Get total number of books from database
+  const count = await Book.countDocuments();
+
+  // Calculate the number of pages
+  const pages = Math.ceil(count / limit);
+
+  // Check if page is valid
+  if (page > pages) {
+    res.status(404).json({ message: 'Page not found' });
+    return;
   }
-  res.status(200).json({
-    "books":books.slice (-pageLimit),
-    "page": 1,
-    "pageCount": Math.ceil (books.length / 10)
-  });
+
+  // Get books from database with pagination
+  const books = await Book.find()
+    .skip((page - 1) * limit)
+    .limit(limit);
+
+  // Send response with books, page, limit and pages
+  res.status(200).json({ books, page, limit, pages });
 });
 
 //Create book
